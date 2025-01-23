@@ -13,39 +13,49 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
+
 	"github.com/sivaratrisrinivas/web3/blockCheck/config"
-	"github.com/sivaratrisrinivas/web3/blockCheck/internal/ens"
-	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator"
-	"github.com/sivaratrisrinivas/web3/blockCheck/pkg/models"
+	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/chain"
+	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/ethereum"
 )
 
-var (
-	ensResolver *ens.Resolver
-)
+var log = logrus.New()
 
 func main() {
-	log := logrus.New()
-	log.SetFormatter(&logrus.JSONFormatter{})
-
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Initialize ENS resolver
-	ensResolver, err = ens.NewResolver(cfg.ENS.ProviderURL, time.Duration(cfg.Cache.TTL))
-	if err != nil {
-		log.Fatalf("Failed to initialize ENS resolver: %v", err)
+	// Initialize validator factory and registry
+	factory := chain.NewFactory()
+	registry := chain.NewRegistry()
+
+	// Register Ethereum validator
+	if err := factory.Register("ethereum", ethereum.NewValidator); err != nil {
+		log.Fatalf("Failed to register Ethereum validator: %v", err)
 	}
-	defer ensResolver.Close()
+
+	// Create and register Ethereum validator instance
+	ethConfig := map[string]interface{}{
+		"provider_url":   cfg.ENS.ProviderURL,
+		"cache_duration": int64(cfg.Cache.TTL.Seconds()),
+	}
+
+	ethValidator, err := factory.Create("ethereum", ethConfig)
+	if err != nil {
+		log.Fatalf("Failed to create Ethereum validator: %v", err)
+	}
+
+	if err := registry.Register(ethValidator); err != nil {
+		log.Fatalf("Failed to register Ethereum validator instance: %v", err)
+	}
 
 	// Initialize router
 	r := chi.NewRouter()
 
 	// Middleware
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(time.Duration(cfg.ENS.TimeoutSeconds) * time.Second))
@@ -53,126 +63,116 @@ func main() {
 	// Routes
 	r.Get("/health", handleHealth)
 	r.Route("/v1", func(r chi.Router) {
-		r.Get("/validate/{address}", handleValidateAddress)
-		r.Get("/resolveEns/{name}", handleResolveENS)
-		r.Get("/addressType/{address}", handleAddressType)
+		r.Get("/validate/{address}", handleValidateAddress(registry))
+		r.Get("/resolveEns/{name}", handleResolveENS(registry))
+		r.Get("/isContract/{address}", handleIsContract(registry))
 	})
 
-	// Create server
-	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-	srv := &http.Server{
-		Addr:    addr,
+	// Start server
+	server := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
 		Handler: r,
 	}
 
-	// Server run context
-	serverCtx, serverStopCtx := context.WithCancel(context.Background())
-
-	// Listen for syscall signals for process lifecycle management
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// Graceful shutdown
 	go func() {
-		<-sig
-
-		// Shutdown signal with grace period of 30 seconds
-		shutdownCtx, cancel := context.WithTimeout(serverCtx, 30*time.Second)
-		defer cancel() // Ensure context resources are cleaned up
-
-		go func() {
-			<-shutdownCtx.Done()
-			if shutdownCtx.Err() == context.DeadlineExceeded {
-				log.Fatal("graceful shutdown timed out.. forcing exit.")
-			}
-		}()
-
-		// Trigger graceful shutdown
-		err := srv.Shutdown(shutdownCtx)
-		if err != nil {
-			log.Printf("Error shutting down server: %v", err)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
 		}
-		serverStopCtx()
 	}()
 
-	// Run the server
-	log.Printf("Server is starting on %s", addr)
-	err = srv.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Error starting server: %v", err)
+	log.Infof("Server started on %s:%d", cfg.Server.Host, cfg.Server.Port)
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Info("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
-	// Wait for server context to be stopped
-	<-serverCtx.Done()
+	log.Info("Server exited properly")
 }
 
-// Handler functions
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
-func handleValidateAddress(w http.ResponseWriter, r *http.Request) {
-	address := chi.URLParam(r, "address")
+func handleValidateAddress(registry *chain.Registry) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		address := chi.URLParam(r, "address")
+		validator, err := registry.Get("ethereum") // Default to Ethereum for now
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	response := &models.AddressValidationResponse{
-		Address: address,
-	}
+		isValid := validator.ValidateAddress(address)
+		response := map[string]interface{}{
+			"address": address,
+			"isValid": isValid,
+		}
 
-	// Basic format validation
-	response.IsValid = validator.IsValidAddress(address)
-	if !response.IsValid {
-		response.Error = "Invalid Ethereum address format"
-		writeJSON(w, http.StatusBadRequest, response)
-		return
-	}
-
-	// Checksum validation
-	response.HasValidChecksum = validator.IsChecksumAddress(address)
-
-	// Get checksum address
-	checksumAddr, err := validator.ToChecksumAddress(address)
-	if err != nil {
-		response.Error = fmt.Sprintf("Error converting to checksum address: %v", err)
-		writeJSON(w, http.StatusInternalServerError, response)
-		return
-	}
-	response.ChecksumAddress = checksumAddr
-
-	writeJSON(w, http.StatusOK, response)
-}
-
-func handleResolveENS(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "name")
-
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	// Resolve ENS name
-	result, err := ensResolver.Resolve(ctx, name)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": fmt.Sprintf("Failed to resolve ENS name: %v", err),
-		})
-		return
-	}
-
-	if result.Error != "" {
-		writeJSON(w, http.StatusNotFound, result)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, result)
-}
-
-func writeJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
-func handleAddressType(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement in next step
-	w.WriteHeader(http.StatusNotImplemented)
+func handleResolveENS(registry *chain.Registry) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := chi.URLParam(r, "name")
+		validator, err := registry.Get("ethereum")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		address, err := validator.ResolveName(r.Context(), name)
+		response := map[string]interface{}{
+			"name": name,
+		}
+
+		if err != nil {
+			response["error"] = err.Error()
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			response["address"] = address
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+}
+
+func handleIsContract(registry *chain.Registry) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		address := chi.URLParam(r, "address")
+		validator, err := registry.Get("ethereum")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		isContract, err := validator.IsContract(r.Context(), address)
+		response := map[string]interface{}{
+			"address": address,
+		}
+
+		if err != nil {
+			response["error"] = err.Error()
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			response["isContract"] = isContract
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
 }
