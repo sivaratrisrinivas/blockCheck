@@ -13,6 +13,7 @@ type Config struct {
 	Server ServerConfig
 	ENS    ENSConfig
 	Cache  CacheConfig
+	Redis  RedisConfig
 	API    APIConfig
 }
 
@@ -28,7 +29,15 @@ type ENSConfig struct {
 }
 
 type CacheConfig struct {
-	TTL time.Duration
+	Type string
+	TTL  time.Duration
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     int
+	Password string
+	DB       int
 }
 
 type APIConfig struct {
@@ -72,11 +81,26 @@ func LoadConfig() (*Config, error) {
 	cfg.ENS.RetryAttempts = retryAttempts
 
 	// Cache Config
+	cfg.Cache.Type = getEnvString("CACHE_TYPE", "memory")
 	ttlMinutes, err := getEnvInt("CACHE_TTL_MINUTES", 60)
 	if err != nil {
 		return nil, fmt.Errorf("invalid CACHE_TTL_MINUTES: %w", err)
 	}
 	cfg.Cache.TTL = time.Duration(ttlMinutes) * time.Minute
+
+	// Redis Config
+	cfg.Redis.Host = getEnvString("REDIS_HOST", "localhost")
+	redisPort, err := getEnvInt("REDIS_PORT", 6379)
+	if err != nil {
+		return nil, fmt.Errorf("invalid REDIS_PORT: %w", err)
+	}
+	cfg.Redis.Port = redisPort
+	cfg.Redis.Password = getEnvString("REDIS_PASSWORD", "")
+	redisDB, err := getEnvInt("REDIS_DB", 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid REDIS_DB: %w", err)
+	}
+	cfg.Redis.DB = redisDB
 
 	// API Config
 	cfg.API.EnableRateLimit = getEnvBool("ENABLE_RATE_LIMIT", true)

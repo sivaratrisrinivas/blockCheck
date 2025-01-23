@@ -21,12 +21,21 @@ import (
 
 var log = logrus.New()
 
+func init() {
+	log.SetLevel(logrus.DebugLevel)
+	log.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp: true,
+	})
+}
+
 func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
+
+	log.Debugf("Loaded configuration: %+v", cfg)
 
 	// Initialize validator factory and registry
 	factory := chain.NewFactory()
@@ -42,6 +51,8 @@ func main() {
 		"provider_url":   cfg.ENS.ProviderURL,
 		"cache_duration": int64(cfg.Cache.TTL.Seconds()),
 	}
+
+	log.Debugf("Creating Ethereum validator with config: %+v", ethConfig)
 
 	ethValidator, err := factory.Create("ethereum", ethConfig)
 	if err != nil {
@@ -134,15 +145,18 @@ func handleResolveENS(registry *chain.Registry) http.HandlerFunc {
 			return
 		}
 
+		log.Debugf("Resolving ENS name: %s", name)
 		address, err := validator.ResolveName(r.Context(), name)
 		response := map[string]interface{}{
 			"name": name,
 		}
 
 		if err != nil {
+			log.Errorf("Failed to resolve ENS name: %v", err)
 			response["error"] = err.Error()
 			w.WriteHeader(http.StatusNotFound)
 		} else {
+			log.Debugf("Successfully resolved ENS name %s to %s", name, address)
 			response["address"] = address
 		}
 
@@ -160,15 +174,18 @@ func handleIsContract(registry *chain.Registry) http.HandlerFunc {
 			return
 		}
 
+		log.Debugf("Checking if address is contract: %s", address)
 		isContract, err := validator.IsContract(r.Context(), address)
 		response := map[string]interface{}{
 			"address": address,
 		}
 
 		if err != nil {
+			log.Errorf("Failed to check contract status: %v", err)
 			response["error"] = err.Error()
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
+			log.Debugf("Contract check result for %s: %v", address, isContract)
 			response["isContract"] = isContract
 		}
 
