@@ -24,10 +24,10 @@ A high-performance Go service for validating Ethereum addresses and resolving EN
 - In-memory fallback cache
 - Configurable TTL and cache strategies
 
-❌ Contract Detection (Coming Soon)
-- Check if an address is a contract
-- View contract verification status
-- Basic contract metadata
+✅ Contract Detection
+- Check if an address is a contract or EOA
+- Fast response times (~64ms for contracts)
+- Proper error handling for invalid addresses
 
 ❌ Rate Limiting & Security
 - Request rate limiting
@@ -70,11 +70,21 @@ Example Response:
 ```
 GET /v1/isContract/{address}
 ```
-Example Response:
+Checks if an Ethereum address is a contract (smart contract) or an EOA (Externally Owned Account).
+
+Example Response (Contract):
 ```json
 {
   "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
   "isContract": true
+}
+```
+
+Example Response (EOA):
+```json
+{
+  "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+  "isContract": false
 }
 ```
 
@@ -85,6 +95,11 @@ Error Response:
   "error": "invalid address format"
 }
 ```
+
+Response Codes:
+- `200 OK`: Successfully checked contract status
+- `400 Bad Request`: Invalid address format
+- `500 Internal Server Error`: RPC or network error
 
 ## Setup
 
