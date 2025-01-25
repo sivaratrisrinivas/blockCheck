@@ -29,6 +29,12 @@ A high-performance Go service for validating Ethereum addresses and resolving EN
 - Fast response times (~64ms for contracts)
 - Proper error handling for invalid addresses
 
+✅ Security & Authentication
+- JWT-based authentication
+- API key generation
+- Protected endpoints
+- Configurable token expiration
+
 ❌ Rate Limiting & Security
 - Request rate limiting
 - IP-based throttling
@@ -36,11 +42,36 @@ A high-performance Go service for validating Ethereum addresses and resolving EN
 
 ## API Endpoints
 
-### Health Check
+### Health Check (Public)
 ```
 GET /health
 ```
 Returns `200 OK` if service is healthy
+
+### Generate API Token (Public)
+```
+POST /v1/token
+```
+Generates a new API key and JWT token.
+
+Example Response:
+```json
+{
+  "api_key": "550e8400-e29b-41d4-a716-446655440000",
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+### Protected Endpoints
+All other endpoints require authentication using the JWT token in the Authorization header:
+```
+Authorization: Bearer <token>
+```
+
+Example:
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." http://localhost:8080/v1/validate/0x...
+```
 
 ### Validate Ethereum Address
 ```
@@ -115,6 +146,10 @@ SERVER_PORT=8080
 SERVER_HOST=localhost
 ENS_PROVIDER_URL=https://mainnet.infura.io/v3/your-project-id
 CACHE_TYPE=redis  # or "memory" for in-memory cache
+
+# JWT Configuration
+JWT_SECRET_KEY=your-256-bit-secret
+JWT_DURATION_MINUTES=60
 ```
 
 ### Development

@@ -63,14 +63,14 @@ func NewValidator(config map[string]interface{}) (chain.Validator, error) {
 	}, nil
 }
 
-func (v *EthereumValidator) ValidateAddress(address string) bool {
+func (v *EthereumValidator) IsValidAddress(address string) bool {
 	log.Debugf("Validating address: %s", address)
 	return addressRegex.MatchString(address)
 }
 
-func (v *EthereumValidator) ResolveName(ctx context.Context, name string) (string, error) {
+func (v *EthereumValidator) ResolveENS(name string) (string, error) {
 	log.Infof("Resolving ENS name: %s", name)
-	result, err := v.ens.Resolve(ctx, name)
+	result, err := v.ens.Resolve(context.Background(), name)
 	if err != nil {
 		log.Errorf("Failed to resolve ENS name: %v", err)
 		return "", err
@@ -86,7 +86,7 @@ func (v *EthereumValidator) ResolveName(ctx context.Context, name string) (strin
 func (v *EthereumValidator) IsContract(ctx context.Context, address string) (bool, error) {
 	log.Infof("Checking if address is contract: %s", address)
 
-	if !v.ValidateAddress(address) {
+	if !v.IsValidAddress(address) {
 		log.Warn("Invalid address format")
 		return false, fmt.Errorf("invalid address format")
 	}

@@ -9,14 +9,13 @@ import (
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/chain"
 )
 
-type ContractResponse struct {
-	Address    string `json:"address"`
-	IsContract bool   `json:"isContract"`
-	Error      string `json:"error,omitempty"`
+type ValidateResponse struct {
+	Address string `json:"address"`
+	IsValid bool   `json:"isValid"`
 }
 
-// IsContractHandler handles contract detection requests
-func IsContractHandler(validator chain.Validator) http.HandlerFunc {
+// ValidateAddressHandler handles Ethereum address validation requests
+func ValidateAddressHandler(validator chain.Validator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -26,16 +25,11 @@ func IsContractHandler(validator chain.Validator) http.HandlerFunc {
 			return
 		}
 
-		isContract, err := validator.IsContract(r.Context(), address)
-		response := ContractResponse{
-			Address: address,
-		}
+		isValid := validator.IsValidAddress(address)
 
-		if err != nil {
-			response.Error = err.Error()
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			response.IsContract = isContract
+		response := ValidateResponse{
+			Address: address,
+			IsValid: isValid,
 		}
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,8 +14,10 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/sivaratrisrinivas/web3/blockCheck/config"
+	"github.com/sivaratrisrinivas/web3/blockCheck/internal/auth"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/chain"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/ethereum"
+	"github.com/sivaratrisrinivas/web3/blockCheck/pkg/handlers"
 )
 
 var log = logrus.New()
@@ -63,6 +64,9 @@ func main() {
 		log.Fatalf("Failed to register Ethereum validator instance: %v", err)
 	}
 
+	// Initialize JWT auth
+	jwtAuth := auth.NewJWTAuth(cfg.JWT.SecretKey, cfg.JWT.Duration)
+
 	// Initialize router
 	r := chi.NewRouter()
 
@@ -71,12 +75,16 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(time.Duration(cfg.ENS.TimeoutSeconds) * time.Second))
 
-	// Routes
-	r.Get("/health", handleHealth)
-	r.Route("/v1", func(r chi.Router) {
-		r.Get("/validate/{address}", handleValidateAddress(registry))
-		r.Get("/resolveEns/{name}", handleResolveENS(registry))
-		r.Get("/isContract/{address}", handleIsContract(registry))
+	// Public routes
+	r.Get("/health", handlers.HealthCheckHandler)
+	r.Post("/v1/token", handlers.GenerateTokenHandler(jwtAuth))
+
+	// Protected routes
+	r.Group(func(r chi.Router) {
+		r.Use(jwtAuth.Middleware)
+		r.Get("/v1/validate/{address}", handlers.ValidateAddressHandler(ethValidator))
+		r.Get("/v1/resolveEns/{name}", handlers.ResolveENSHandler(ethValidator))
+		r.Get("/v1/isContract/{address}", handlers.IsContractHandler(ethValidator))
 	})
 
 	// Start server
@@ -109,87 +117,4 @@ func main() {
 	}
 
 	log.Info("Server exited properly")
-}
-
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
-func handleValidateAddress(registry *chain.Registry) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		address := chi.URLParam(r, "address")
-		validator, err := registry.Get("ethereum") // Default to Ethereum for now
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		isValid := validator.ValidateAddress(address)
-		response := map[string]interface{}{
-			"address": address,
-			"isValid": isValid,
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	}
-}
-
-func handleResolveENS(registry *chain.Registry) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		name := chi.URLParam(r, "name")
-		validator, err := registry.Get("ethereum")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		log.Debugf("Resolving ENS name: %s", name)
-		address, err := validator.ResolveName(r.Context(), name)
-		response := map[string]interface{}{
-			"name": name,
-		}
-
-		if err != nil {
-			log.Errorf("Failed to resolve ENS name: %v", err)
-			response["error"] = err.Error()
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			log.Debugf("Successfully resolved ENS name %s to %s", name, address)
-			response["address"] = address
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	}
-}
-
-func handleIsContract(registry *chain.Registry) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		address := chi.URLParam(r, "address")
-		validator, err := registry.Get("ethereum")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		log.Debugf("Checking if address is contract: %s", address)
-		isContract, err := validator.IsContract(r.Context(), address)
-		response := map[string]interface{}{
-			"address": address,
-		}
-
-		if err != nil {
-			log.Errorf("Failed to check contract status: %v", err)
-			response["error"] = err.Error()
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			log.Debugf("Contract check result for %s: %v", address, isContract)
-			response["isContract"] = isContract
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	}
 }

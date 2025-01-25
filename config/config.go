@@ -15,6 +15,7 @@ type Config struct {
 	Cache  CacheConfig
 	Redis  RedisConfig
 	API    APIConfig
+	JWT    JWTConfig
 }
 
 type ServerConfig struct {
@@ -46,6 +47,11 @@ type APIConfig struct {
 		Requests int
 		Duration time.Duration
 	}
+}
+
+type JWTConfig struct {
+	SecretKey string
+	Duration  time.Duration
 }
 
 func LoadConfig() (*Config, error) {
@@ -115,6 +121,18 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("invalid RATE_LIMIT_DURATION_SECONDS: %w", err)
 	}
 	cfg.API.RateLimit.Duration = time.Duration(durationSeconds) * time.Second
+
+	// JWT Config
+	cfg.JWT.SecretKey = getEnvString("JWT_SECRET_KEY", "")
+	if cfg.JWT.SecretKey == "" {
+		return nil, fmt.Errorf("JWT_SECRET_KEY is required")
+	}
+
+	jwtDuration, err := getEnvInt("JWT_DURATION_MINUTES", 60)
+	if err != nil {
+		return nil, fmt.Errorf("invalid JWT_DURATION_MINUTES: %w", err)
+	}
+	cfg.JWT.Duration = time.Duration(jwtDuration) * time.Minute
 
 	return cfg, nil
 }

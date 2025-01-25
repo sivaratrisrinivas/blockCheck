@@ -4,13 +4,13 @@ import "context"
 
 // Validator defines the interface that all chain validators must implement
 type Validator interface {
-	// ValidateAddress checks if the given address is valid for this chain
-	ValidateAddress(address string) bool
+	// IsValidAddress checks if the given string is a valid address format
+	IsValidAddress(address string) bool
 
-	// ResolveName resolves a human-readable name to a chain address (e.g. ENS for Ethereum)
-	ResolveName(ctx context.Context, name string) (string, error)
+	// ResolveENS resolves an ENS name to its Ethereum address
+	ResolveENS(name string) (string, error)
 
-	// IsContract checks if the given address is a contract or a regular account
+	// IsContract checks if the given address is a contract
 	IsContract(ctx context.Context, address string) (bool, error)
 
 	// GetChainName returns the name of the chain this validator supports
