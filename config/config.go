@@ -16,6 +16,7 @@ type Config struct {
 	Redis  RedisConfig
 	API    APIConfig
 	JWT    JWTConfig
+	Log    LogConfig
 }
 
 type ServerConfig struct {
@@ -52,6 +53,11 @@ type APIConfig struct {
 type JWTConfig struct {
 	SecretKey string
 	Duration  time.Duration
+}
+
+type LogConfig struct {
+	Environment string
+	Level       string
 }
 
 func LoadConfig() (*Config, error) {
@@ -133,6 +139,10 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("invalid JWT_DURATION_MINUTES: %w", err)
 	}
 	cfg.JWT.Duration = time.Duration(jwtDuration) * time.Minute
+
+	// Log Config
+	cfg.Log.Environment = getEnvString("LOG_ENVIRONMENT", "development")
+	cfg.Log.Level = getEnvString("LOG_LEVEL", "info")
 
 	return cfg, nil
 }

@@ -115,6 +115,27 @@
 - Implemented configurable token expiration
 - Added detailed error responses for auth failures
 
+## [0.2.0] - 2025-01-24
+
+### Added
+- In-memory caching implementation
+- Improved performance across all endpoints
+- Detailed logging and monitoring
+- Updated performance metrics
+
+### Changed
+- Switched default cache to in-memory from Redis
+- Improved ENS resolution performance
+- Enhanced error handling and logging
+- Updated JWT token generation
+
+### Performance Improvements
+- Health Check: 133μs → 29.8μs
+- Address Validation: 1.7ms → 1.89ms
+- ENS Resolution: 863ms → 127ms
+- Contract Detection: 72ms → 62ms
+- Token Generation: New benchmark at 759μs
+
 ## [0.1.0] - 2025-01-24
 
 ### Implementation Overview
@@ -128,7 +149,7 @@ All core features have been implemented and tested successfully:
 - Implementation Details:
   - Validates Ethereum address format using regex
   - Checks EIP-55 checksum
-  - Response time: ~1.7ms for valid addresses, ~240μs for invalid addresses
+  - Response time: ~1.89ms
 
 #### Feature: ENS Resolution ✅
 - Status: Complete
@@ -138,7 +159,7 @@ All core features have been implemented and tested successfully:
 - Implementation Details:
   - Successfully resolves ENS names to addresses
   - Caches results for improved performance
-  - Response time: ~863ms for first resolution, ~129ms for cached results
+  - Response time: ~127ms (first request), ~80ms (cached)
 
 #### Feature: Contract Detection ✅
 - Status: Complete
@@ -148,7 +169,7 @@ All core features have been implemented and tested successfully:
 - Implementation Details:
   - Uses CodeAt RPC call for reliable contract detection
   - Validates address format before RPC calls
-  - Response time: ~72ms for contracts, ~58ms for EOAs
+  - Response time: ~62ms
 
 #### Feature: Security & Authentication ✅
 - Status: Complete
@@ -161,30 +182,23 @@ All core features have been implemented and tested successfully:
   - JWT-based authentication
   - API key generation with UUIDs
   - Protected endpoints with token validation
-  - Response time: <1ms for auth checks
+  - Response time: ~759μs
 
 #### Feature: Caching System ✅
 - Status: Complete
 - Files Modified:
-  - `internal/cache/redis/redis.go`
   - `internal/cache/memory/memory.go`
+  - `internal/cache/redis/redis.go`
   - `internal/cache/types/types.go`
 - Implementation Details:
-  - Redis integration for distributed caching
-  - In-memory fallback option
+  - In-memory caching as default
+  - Redis support (optional)
   - Configurable TTL and cache options
-
-### Performance Metrics
-- Health Check: ~133μs
-- Address Validation: 1.7ms (valid), 240μs (invalid)
-- ENS Resolution: 863ms (first request), 129ms (cached)
-- Contract Detection: 72ms (contract), 58ms (EOA)
-- Authentication: <1ms
 
 ### Technical Decisions
 1. Used JWT for stateless authentication
 2. Implemented plugin architecture for validators
-3. Added Redis caching for improved performance
+3. Added in-memory caching for improved performance
 4. Detailed logging for debugging and monitoring
 
 ### Next Steps

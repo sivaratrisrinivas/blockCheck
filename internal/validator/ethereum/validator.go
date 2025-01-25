@@ -10,7 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/sirupsen/logrus"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/ens"
+	"github.com/sivaratrisrinivas/web3/blockCheck/internal/logger"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/chain"
+	"go.uber.org/zap"
 )
 
 var (
@@ -64,41 +66,56 @@ func NewValidator(config map[string]interface{}) (chain.Validator, error) {
 }
 
 func (v *EthereumValidator) IsValidAddress(address string) bool {
-	log.Debugf("Validating address: %s", address)
+	logger.Debug("Validating Ethereum address",
+		zap.String("address", address))
 	return addressRegex.MatchString(address)
 }
 
 func (v *EthereumValidator) ResolveENS(name string) (string, error) {
-	log.Infof("Resolving ENS name: %s", name)
+	logger.Debug("Resolving ENS name",
+		zap.String("name", name))
+
 	result, err := v.ens.Resolve(context.Background(), name)
 	if err != nil {
-		log.Errorf("Failed to resolve ENS name: %v", err)
+		logger.Error("Failed to resolve ENS name",
+			zap.String("name", name),
+			zap.Error(err))
 		return "", err
 	}
 	if result.Error != "" {
-		log.Warnf("ENS resolution error: %s", result.Error)
+		logger.Warn("ENS resolution error",
+			zap.String("name", name),
+			zap.String("error", result.Error))
 		return "", fmt.Errorf("%s", result.Error)
 	}
-	log.Infof("Successfully resolved %s to %s", name, result.Address.Hex())
+	logger.Info("Successfully resolved ENS name",
+		zap.String("name", name),
+		zap.String("address", result.Address.Hex()))
 	return result.Address.Hex(), nil
 }
 
 func (v *EthereumValidator) IsContract(ctx context.Context, address string) (bool, error) {
-	log.Infof("Checking if address is contract: %s", address)
+	logger.Debug("Checking if address is contract",
+		zap.String("address", address))
 
 	if !v.IsValidAddress(address) {
-		log.Warn("Invalid address format")
+		logger.Warn("Invalid address format",
+			zap.String("address", address))
 		return false, fmt.Errorf("invalid address format")
 	}
 
 	code, err := v.client.CodeAt(ctx, common.HexToAddress(address), nil)
 	if err != nil {
-		log.Errorf("Failed to get code at address: %v", err)
-		return false, fmt.Errorf("failed to get code at address: %w", err)
+		logger.Error("Failed to get code at address",
+			zap.String("address", address),
+			zap.Error(err))
+		return false, err
 	}
 
 	isContract := len(code) > 0
-	log.Infof("Address %s is contract: %v", address, isContract)
+	logger.Info("Contract check completed",
+		zap.String("address", address),
+		zap.Bool("isContract", isContract))
 	return isContract, nil
 }
 

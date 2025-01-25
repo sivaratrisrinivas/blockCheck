@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/auth"
+	"github.com/sivaratrisrinivas/web3/blockCheck/internal/logger"
+	"go.uber.org/zap"
 )
 
 type TokenResponse struct {
@@ -17,6 +19,8 @@ type TokenResponse struct {
 // GenerateTokenHandler creates a new API key and JWT token
 func GenerateTokenHandler(jwtAuth *auth.JWTAuth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Debug("Generating new API token")
+
 		w.Header().Set("Content-Type", "application/json")
 
 		// Generate a new API key
@@ -25,10 +29,14 @@ func GenerateTokenHandler(jwtAuth *auth.JWTAuth) http.HandlerFunc {
 		// Generate JWT token
 		token, err := jwtAuth.GenerateToken(apiKey)
 		if err != nil {
-			logrus.Errorf("Failed to generate token: %v", err)
+			logger.Error("Failed to generate token",
+				zap.Error(err))
 			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 			return
 		}
+
+		logger.Info("Token generated successfully",
+			zap.String("apiKey", apiKey))
 
 		response := TokenResponse{
 			APIKey: apiKey,

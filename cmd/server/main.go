@@ -12,9 +12,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/sivaratrisrinivas/web3/blockCheck/config"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/auth"
+	"github.com/sivaratrisrinivas/web3/blockCheck/internal/logger"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/chain"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/ethereum"
 	"github.com/sivaratrisrinivas/web3/blockCheck/pkg/handlers"
@@ -33,10 +35,17 @@ func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatal("Failed to load configuration:", err)
 	}
 
-	log.Debugf("Loaded configuration: %+v", cfg)
+	// Initialize logger
+	logger.Init(cfg.Log.Environment)
+	defer logger.Sync()
+
+	logger.Info("Starting server",
+		zap.String("host", cfg.Server.Host),
+		zap.Int("port", cfg.Server.Port),
+		zap.String("env", cfg.Log.Environment))
 
 	// Initialize validator factory and registry
 	factory := chain.NewFactory()
@@ -95,26 +104,30 @@ func main() {
 
 	// Graceful shutdown
 	go func() {
+		logger.Info("Server listening",
+			zap.String("address", fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+			logger.Fatal("Server failed",
+				zap.Error(err))
 		}
 	}()
 
-	log.Infof("Server started on %s:%d", cfg.Server.Host, cfg.Server.Port)
+	logger.Info("Server started")
 
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Info("Shutting down server...")
+	logger.Info("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		logger.Fatal("Server shutdown failed",
+			zap.Error(err))
 	}
 
-	log.Info("Server exited properly")
+	logger.Info("Server exited properly")
 }
