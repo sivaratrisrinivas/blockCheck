@@ -1,79 +1,66 @@
-# BlockCheck - Ethereum Address & ENS Validation Service
+# Ethereum Address Validator & ENS Resolver
 
-A high-performance Go service for validating Ethereum addresses and resolving ENS names.
+A high-performance API service for validating Ethereum addresses, resolving ENS names, and detecting smart contracts.
 
 ## Features
 
 ✅ Ethereum Address Format Validation
-- Validates address format and checksum
-- EIP-55 compliant validation
-- Fast regex-based validation
+- EIP-55 checksum validation
+- Response time: ~1.7ms
 
-✅ ENS Resolution Support
-- Resolves ENS names to Ethereum addresses
-- Caches resolutions for improved performance
-- Handles non-existent names gracefully
-
-✅ Plugin Architecture
-- Extensible validator system
-- Support for multiple chains (Ethereum implemented)
-- Easy to add new validators
-
-✅ Caching System
-- Redis support for distributed caching
-- In-memory fallback cache
-- Configurable TTL and cache strategies
+✅ ENS Name Resolution
+- Resolves ENS names to addresses
+- Caches results for improved performance
+- Response time: ~863ms (first request), ~129ms (cached)
 
 ✅ Contract Detection
-- Check if an address is a contract or EOA
-- Fast response times (~64ms for contracts)
-- Proper error handling for invalid addresses
+- Detects if an address is a contract or EOA
+- Response time: ~72ms (contract), ~58ms (EOA)
 
 ✅ Security & Authentication
 - JWT-based authentication
 - API key generation
 - Protected endpoints
-- Configurable token expiration
+- Response time: <1ms
 
-❌ Rate Limiting & Security
-- Request rate limiting
-- IP-based throttling
-- API key authentication
+✅ Caching System
+- Redis integration
+- In-memory fallback
+- Configurable TTL
+
+❌ Rate Limiting (Coming Soon)
+❌ Prometheus Metrics (Coming Soon)
+❌ Front-end Interface (Coming Soon)
 
 ## API Endpoints
 
-### Health Check (Public)
+### Public Endpoints
+
+#### Health Check
 ```
 GET /health
 ```
-Returns `200 OK` if service is healthy
+Response: `200 OK` if service is healthy
 
-### Generate API Token (Public)
+#### Generate API Token
 ```
 POST /v1/token
 ```
-Generates a new API key and JWT token.
-
-Example Response:
+Response:
 ```json
 {
-  "api_key": "550e8400-e29b-41d4-a716-446655440000",
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "api_key": "56ed3863-4515-4f38-897c-fb94b6d93afd",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
 ### Protected Endpoints
-All other endpoints require authentication using the JWT token in the Authorization header:
+All protected endpoints require a JWT token in the Authorization header:
 ```
 Authorization: Bearer <token>
 ```
 
-Example:
-```bash
-curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." http://localhost:8080/v1/validate/0x...
-```
-
-### Validate Ethereum Address
+#### Validate Address
 ```
 GET /v1/validate/{address}
 ```
@@ -85,7 +72,7 @@ Example Response:
 }
 ```
 
-### Resolve ENS Name
+#### Resolve ENS Name
 ```
 GET /v1/resolveEns/{name}
 ```
@@ -97,13 +84,11 @@ Example Response:
 }
 ```
 
-### Check Contract Status
+#### Check Contract Status
 ```
 GET /v1/isContract/{address}
 ```
-Checks if an Ethereum address is a contract (smart contract) or an EOA (Externally Owned Account).
-
-Example Response (Contract):
+Example Response:
 ```json
 {
   "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -111,67 +96,67 @@ Example Response (Contract):
 }
 ```
 
-Example Response (EOA):
-```json
-{
-  "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-  "isContract": false
-}
-```
-
-Error Response:
-```json
-{
-  "address": "0xinvalid",
-  "error": "invalid address format"
-}
-```
-
-Response Codes:
-- `200 OK`: Successfully checked contract status
-- `400 Bad Request`: Invalid address format
-- `500 Internal Server Error`: RPC or network error
-
 ## Setup
 
 ### Requirements
 - Go 1.22+
 - Redis (optional, for distributed caching)
-- Infura API Key (for ENS resolution)
 
 ### Environment Variables
-Copy `.env.example` to `.env` and configure:
-```env
-SERVER_PORT=8080
+```
+# Server Configuration
 SERVER_HOST=localhost
+SERVER_PORT=8080
+
+# ENS Configuration
 ENS_PROVIDER_URL=https://mainnet.infura.io/v3/your-project-id
-CACHE_TYPE=redis  # or "memory" for in-memory cache
+ENS_TIMEOUT_SECONDS=10
+ENS_RETRY_ATTEMPTS=3
+
+# Cache Configuration
+CACHE_TYPE=redis  # or "memory"
+CACHE_TTL_MINUTES=60
+
+# Redis Configuration (if using redis cache)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
 
 # JWT Configuration
 JWT_SECRET_KEY=your-256-bit-secret
 JWT_DURATION_MINUTES=60
+
+# API Configuration
+ENABLE_RATE_LIMIT=true
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_DURATION_SECONDS=60
 ```
 
-### Development
-1. Install dependencies:
+### Installation
 ```bash
+git clone https://github.com/sivaratrisrinivas/web3/blockCheck
+cd blockCheck
 go mod download
-```
-
-2. Run tests:
-```bash
-go test ./...
-```
-
-3. Start server:
-```bash
 go run cmd/server/main.go
 ```
 
 ## Performance
-- Sub-millisecond response times for address validation
-- ~100ms average for ENS resolution (with caching)
-- Scales horizontally with Redis caching
+- Health Check: ~133μs
+- Address Validation: 1.7ms (valid), 240μs (invalid)
+- ENS Resolution: 863ms (first request), 129ms (cached)
+- Contract Detection: 72ms (contract), 58ms (EOA)
+- Authentication: <1ms
+
+## Development
+```bash
+# Run tests
+go test ./...
+
+# Run with hot reload
+go install github.com/cosmtrek/air@latest
+air
+```
 
 ## Contributing
 Pull requests welcome! Please read CONTRIBUTING.md first.
