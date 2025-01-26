@@ -7,69 +7,99 @@ All notable changes to this project will be documented in this file.
 ### Feature Implementation Overview
 
 #### 1. Project Setup & Configuration
-**What**: Created base project structure and configuration
-**Why**: To establish a clean, organized foundation for the project
-**How**: 
+**What**:  
+Created base project structure and configuration
+
+**Why**:  
+To establish a clean, organized foundation for the project
+
+**How**:  
 - Set up Go modules and project layout
 - Created configuration system using YAML
 - Implemented structured logging
+
 **Key Files**:
 - `cmd/server/main.go`: Main server entry point
 - `config.yaml`: Configuration settings
 - `internal/logger/logger.go`: Logging setup
 
 #### 2. Address Validation
-**What**: Implemented Ethereum address validation
-**Why**: To help users verify if addresses are correctly formatted
-**How**: 
+**What**:  
+Implemented Ethereum address validation
+
+**Why**:  
+To help users verify if addresses are correctly formatted and catch potential errors before transactions
+
+**How**:  
 - Added EIP-55 checksum verification
 - Created regex-based format checking
 - Built validation endpoint
+
 **Key Files**:
 - `internal/validator/ethereum/validator.go`: Core validation logic
 - `pkg/handlers/validate.go`: HTTP handler
 
 #### 3. ENS Resolution
-**What**: Added ENS name resolution
-**Why**: To convert human-readable names to Ethereum addresses
-**How**: 
+**What**:  
+Added ENS name resolution system
+
+**Why**:  
+To convert human-readable names (like 'vitalik.eth') into their corresponding Ethereum addresses
+
+**How**:  
 - Integrated with Ethereum node
 - Added caching for performance
 - Created resolution endpoint
+
 **Key Files**:
 - `internal/ens/resolver.go`: ENS resolution logic
 - `pkg/handlers/resolve.go`: HTTP handler
 
 #### 4. Contract Detection
-**What**: Built contract detection system
-**Why**: To identify if an address is a smart contract
-**How**: 
+**What**:  
+Built smart contract detection system
+
+**Why**:  
+To help users identify if they're interacting with a smart contract or a regular address
+
+**How**:  
 - Used `CodeAt` RPC call for detection
 - Added validation checks
 - Implemented caching
+
 **Key Files**:
 - `internal/validator/ethereum/validator.go`: Contract detection logic
 - `pkg/handlers/contract.go`: HTTP handler
 
 #### 5. Frontend Interface
-**What**: Created web interface
-**Why**: To provide easy access to all features
-**How**: 
+**What**:  
+Created user-friendly web interface
+
+**Why**:  
+To make the tools accessible to users without requiring API knowledge
+
+**How**:  
 - Built responsive UI with dark/light mode
 - Added real-time validation
 - Implemented API integration
+
 **Key Files**:
 - `web/static/index.html`: Main UI
 - `web/static/css/styles.css`: Styling
 - `web/static/js/app.js`: Frontend logic
 
 #### 6. Security & Performance
-**What**: Added security features and optimizations
-**Why**: To protect API and improve response times
-**How**: 
+**What**:  
+Added security features and performance optimizations
+
+**Why**:  
+To protect the API from unauthorized access and ensure fast response times
+
+**How**:  
 - Implemented JWT authentication
 - Added request timeouts
 - Set up response caching
+
 **Key Files**:
 - `internal/auth/jwt.go`: JWT implementation
 - `internal/cache/cache.go`: Caching system
