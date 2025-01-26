@@ -1,99 +1,87 @@
 # Ethereum Address Tools
 
-A modern web application for Ethereum address validation, ENS resolution, and contract detection.
+A simple web app that helps you work with Ethereum addresses - validate them, look up ENS names, and check if an address is a smart contract.
 
-## Features
+## Why?
 
-- **Address Validation**: Validate Ethereum addresses with EIP-55 checksum verification
-- **ENS Resolution**: Resolve Ethereum Name Service (ENS) domains to addresses
-- **Contract Detection**: Check if an address is a smart contract
-- **JWT Authentication**: Secure API endpoints with JWT token-based authentication
-- **Dark/Light Mode**: Automatic theme detection with manual toggle
-- **Modern UI**: Clean, responsive interface with real-time feedback
+Working with Ethereum addresses can be tricky:
+- It's hard to tell if an address is valid or has typos
+- ENS names like 'vitalik.eth' need to be converted to actual addresses
+- You might need to know if you're dealing with a smart contract or a regular address
 
-## API Endpoints
+This tool makes these common tasks easy and quick, with a simple web interface.
 
-- `POST /v1/token`: Generate a new API token
-- `GET /v1/validate/{address}`: Validate an Ethereum address
-- `GET /v1/resolveEns/{name}`: Resolve an ENS name to an address
-- `GET /v1/isContract/{address}`: Check if an address is a contract
+## Quick Start
 
-## Example Usage
+1. Make sure you have:
+   - Go 1.21+
+   - An Ethereum node access (like Infura)
 
-### Address Validation
-```bash
-# First, generate a token
-curl -X POST http://localhost:8080/v1/token
-
-# Then use the token to validate an address
-curl -H "Authorization: Bearer <your-token>" \
-  http://localhost:8080/v1/validate/0x742d35Cc6634C0532925a3b844Bc454e4438f44e
-```
-
-### ENS Resolution
-```bash
-curl -H "Authorization: Bearer <your-token>" \
-  http://localhost:8080/v1/resolveEns/vitalik.eth
-```
-
-### Contract Detection
-```bash
-curl -H "Authorization: Bearer <your-token>" \
-  http://localhost:8080/v1/isContract/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
-```
-
-## Development
-
-### Prerequisites
-- Go 1.21 or higher
-- Access to an Ethereum node (e.g., Infura)
-
-### Configuration
-Create a `config.yaml` file:
+2. Create a `config.yaml`:
 ```yaml
 server:
   host: localhost
   port: 8080
-  env: development
 
 ethereum:
-  provider_url: https://mainnet.infura.io/v3/your-project-id
-  cache_duration: 3600  # in seconds
+  provider_url: your-ethereum-node-url
+  cache_duration: 3600  # 1 hour
 
 jwt:
   secret: your-secret-key
-  expiry: 3600  # in seconds
+  expiry: 3600  # 1 hour
 ```
 
-### Running the Server
+3. Run it:
 ```bash
 go run cmd/server/main.go
 ```
 
-### Testing
+4. Open `http://localhost:8080` in your browser
+
+## Usage
+
+### 1. Get an API Token
+First, click "Generate Token" in the UI or use:
 ```bash
-go test ./...
+curl -X POST http://localhost:8080/v1/token
 ```
 
-## Architecture
+### 2. Check an Ethereum Address
+```bash
+# Example of a valid address
+curl -H "Authorization: Bearer your-token" \
+  http://localhost:8080/v1/validate/0x742d35Cc6634C0532925a3b844Bc454e4438f44e
+```
 
-- **Plugin Architecture**: Modular design for easy extension
-- **Caching**: Built-in caching for ENS and contract detection
-- **Middleware**: JWT authentication and request timeout handling
-- **Structured Logging**: Detailed logging with different levels
-- **Error Handling**: Comprehensive error handling and user feedback
+### 3. Look up an ENS Name
+```bash
+# Convert vitalik.eth to its address
+curl -H "Authorization: Bearer your-token" \
+  http://localhost:8080/v1/resolveEns/vitalik.eth
+```
 
-## Security Features
+### 4. Check if Address is a Contract
+```bash
+# Check if an address is a smart contract
+curl -H "Authorization: Bearer your-token" \
+  http://localhost:8080/v1/isContract/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+```
 
-- JWT-based authentication
-- Request timeouts
-- Input validation
-- Secure response headers
-- Rate limiting (configurable)
+### Features
+- ✅ Validates addresses using the EIP-55 standard
+- 🔍 Converts ENS names to addresses
+- 🤖 Detects smart contracts
+- 🔒 Secure API with tokens
+- 🌓 Dark/Light mode
+- 📱 Works on mobile
 
-## Performance
+## Contributing
 
-- Response caching
-- Connection pooling
-- Efficient error handling
-- Optimized API response formats
+1. Fork the repo
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `go test ./...`
+5. Submit a pull request
+
+Found a bug or have a suggestion? Open an issue!
