@@ -7,6 +7,9 @@ type Validator interface {
 	// IsValidAddress checks if the given string is a valid address format
 	IsValidAddress(address string) bool
 
+	// IsChecksumAddress checks if the address has valid EIP-55 mixed-case checksum
+	IsChecksumAddress(address string) bool
+
 	// ResolveENS resolves an ENS name to its Ethereum address
 	ResolveENS(name string) (string, error)
 

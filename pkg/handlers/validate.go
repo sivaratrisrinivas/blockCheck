@@ -25,14 +25,19 @@ func ValidateAddressHandler(validator chain.Validator) http.HandlerFunc {
 			return
 		}
 
-		isValid := validator.IsValidAddress(address)
+		// Validate using EIP-55 checksum
+		isValid := validator.IsChecksumAddress(address)
+		logrus.WithFields(logrus.Fields{
+			"address": address,
+			"isValid": isValid,
+		}).Debug("EIP-55 validation result")
 
-		response := ValidateResponse{
+		resp := ValidateResponse{
 			Address: address,
 			IsValid: isValid,
 		}
 
-		if err := json.NewEncoder(w).Encode(response); err != nil {
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			logrus.Errorf("Failed to encode response: %v", err)
 		}
 	}

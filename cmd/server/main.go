@@ -84,6 +84,16 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(time.Duration(cfg.ENS.TimeoutSeconds) * time.Second))
 
+	// Static file serving
+	workDir, _ := os.Getwd()
+	filesDir := http.Dir(workDir + "/web/static")
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(filesDir)))
+
+	// Serve index.html at root
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, workDir+"/web/static/index.html")
+	})
+
 	// Public routes
 	r.Get("/health", handlers.HealthCheckHandler)
 	r.Post("/v1/token", handlers.GenerateTokenHandler(jwtAuth))

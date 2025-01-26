@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,6 +14,7 @@ import (
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/logger"
 	"github.com/sivaratrisrinivas/web3/blockCheck/internal/validator/chain"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -69,6 +71,82 @@ func (v *EthereumValidator) IsValidAddress(address string) bool {
 	logger.Debug("Validating Ethereum address",
 		zap.String("address", address))
 	return addressRegex.MatchString(address)
+}
+
+func (v *EthereumValidator) IsChecksumAddress(address string) bool {
+	logger.Debug("Validating Ethereum address checksum",
+		zap.String("address", address))
+
+	// First check basic format
+	if !addressRegex.MatchString(address) {
+		logger.Debug("Basic format check failed")
+		return false
+	}
+
+	// Generate checksum address
+	checksummed, err := ToChecksumAddress(address)
+	if err != nil {
+		logger.Debug("Failed to generate checksum address",
+			zap.Error(err))
+		return false
+	}
+
+	logger.Debug("Comparing addresses",
+		zap.String("input", address),
+		zap.String("checksummed", checksummed))
+
+	// For EIP-55, we need exact match
+	return address == checksummed
+}
+
+// ToChecksumAddress converts an Ethereum address to mixed-case checksum format
+func ToChecksumAddress(address string) (string, error) {
+	if !addressRegex.MatchString(address) {
+		return "", fmt.Errorf("invalid ethereum address format")
+	}
+
+	// Remove 0x prefix and convert to lowercase
+	addr := strings.ToLower(address[2:])
+
+	// Calculate hash of the lowercase address without 0x prefix
+	hash := Keccak256([]byte(addr))
+
+	result := "0x"
+	for i := 0; i < len(addr); i++ {
+		// Get the corresponding nibble from the hash
+		// Each byte of the hash corresponds to two characters of the address
+		hashByte := hash[i/2]
+		// For even indices, use the high nibble
+		// For odd indices, use the low nibble
+		hashNibble := hashByte
+		if i%2 == 0 {
+			hashNibble = hashByte >> 4
+		} else {
+			hashNibble &= 0xf
+		}
+
+		// If the character is a letter (a-f) and the corresponding hash nibble is >= 8,
+		// make it uppercase
+		c := addr[i]
+		if c >= '0' && c <= '9' {
+			result += string(c)
+		} else {
+			if hashNibble >= 8 {
+				result += strings.ToUpper(string(c))
+			} else {
+				result += string(c)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// Keccak256 calculates the Keccak-256 hash of a byte slice
+func Keccak256(data []byte) []byte {
+	hash := sha3.NewLegacyKeccak256()
+	hash.Write(data)
+	return hash.Sum(nil)
 }
 
 func (v *EthereumValidator) ResolveENS(name string) (string, error) {

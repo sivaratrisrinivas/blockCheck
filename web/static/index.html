@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereum Tools</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap">
+</head>
+
+<body class="dark">
+    <div class="container">
+        <header>
+            <h1>Ethereum Tools</h1>
+            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                <svg viewBox="0 0 24 24" class="moon">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                <svg viewBox="0 0 24 24" class="sun">
+                    <circle cx="12" cy="12" r="5" />
+                    <path
+                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+            </button>
+        </header>
+
+        <main>
+            <section class="tool-section">
+                <h2>1. Get API Token</h2>
+                <button id="generate-token" class="btn">Generate Token</button>
+                <div id="token-display" class="token-display hidden">
+                    <div class="token-row">
+                        <code id="jwt-token"></code>
+                        <button class="copy-btn" data-clipboard="jwt-token" title="Copy token">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M8 4v12h12V4H8zm-2 12V2h16v14H6z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="tool-section">
+                <h2>2. Validate Address</h2>
+                <div class="input-row">
+                    <input type="text" id="eth-address" placeholder="0x...">
+                    <button id="validate-address" class="btn" disabled>Check</button>
+                </div>
+                <div id="validation-result" class="result hidden"></div>
+            </section>
+
+            <section class="tool-section">
+                <h2>3. Resolve ENS</h2>
+                <div class="input-row">
+                    <input type="text" id="ens-name" placeholder="vitalik.eth">
+                    <button id="resolve-ens" class="btn" disabled>Resolve</button>
+                </div>
+                <div id="ens-result" class="result hidden"></div>
+            </section>
+
+            <section class="tool-section">
+                <h2>4. Check Contract</h2>
+                <div class="input-row">
+                    <input type="text" id="contract-address" placeholder="0x...">
+                    <button id="check-contract" class="btn" disabled>Check</button>
+                </div>
+                <div id="contract-result" class="result hidden"></div>
+            </section>
+
+            <footer>
+                <div class="metrics">
+                    <span>Validation: ~1.89ms</span>
+                    <span>ENS: ~127ms</span>
+                    <span>Contract: ~62ms</span>
+                </div>
+            </footer>
+        </main>
+    </div>
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>
