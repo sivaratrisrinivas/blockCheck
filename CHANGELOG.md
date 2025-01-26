@@ -1,5 +1,53 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+## [1.0.0] - 2025-01-26
+
+### Added
+- Initial release with core functionality
+- Frontend interface with dark/light mode support
+- Address validation with EIP-55 checksum verification
+- ENS name resolution with caching
+- Contract detection for Ethereum addresses
+- JWT-based authentication system
+- Modern, responsive UI with real-time feedback
+- Structured logging system
+- Configuration via YAML file
+- API documentation in README
+
+### Features
+- Address validation endpoint (`/v1/validate/{address}`)
+- ENS resolution endpoint (`/v1/resolveEns/{name}`)
+- Contract detection endpoint (`/v1/isContract/{address}`)
+- Token generation endpoint (`/v1/token`)
+- Health check endpoint (`/health`)
+
+### Technical Details
+- Implemented plugin architecture for extensibility
+- Added in-memory caching system
+- Integrated JWT authentication middleware
+- Added request timeout handling
+- Implemented structured logging
+- Added comprehensive error handling
+- Created modern UI with ShadCN-inspired components
+- Added theme toggle functionality
+- Implemented copy-to-clipboard feature
+- Added real-time validation feedback
+
+### Performance
+- Optimized API response formats
+- Implemented connection pooling
+- Added response caching for ENS and contract checks
+- Efficient error handling system
+
+### Security
+- JWT token-based authentication
+- Request timeouts
+- Input validation
+- Secure response headers
+- Protected API endpoints
+
 ## Implementation Overview
 
 ### Feature: Contract Detection
